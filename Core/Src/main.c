@@ -25,6 +25,10 @@
 #include "task.h"
 #include "button.h"
 #include "matrix_led_hc138.h"
+//add 09-02-2022 for work with oled ssd1351
+#include "ssd1351.h"
+#include "fonts.h"
+#include "testimg.h"
 
 /* USER CODE END Includes */
 
@@ -59,14 +63,15 @@ int col_cnt  = 0;
 int cnt_sec = 0;
 int cnt_msec = 0;
 int videoram_matrix[7][20]={
-	{1,0,0,0,1,0,1,0,0,0,1,0,0,1,0,1,0,0,1,0},
-	{0,1,0,1,0,0,1,0,0,0,1,0,0,1,0,0,0,0,1,0},
-	{0,1,0,1,0,0,0,1,0,0,1,0,0,1,0,0,0,1,1,0},
-	{0,0,1,0,0,0,0,0,1,1,0,0,0,1,0,0,1,0,1,0},
-	{0,1,0,1,0,0,0,0,1,0,0,0,0,1,0,1,0,0,1,0},
-	{0,1,0,1,0,0,0,1,0,0,0,0,0,1,1,0,0,0,1,0},
-	{1,0,0,0,1,0,1,0,0,0,0,0,0,1,0,0,0,0,1,0}		
+	{1,0,0,0,1,0,1,0,0,0,1,0,0,1,0,1,0,1,0,0},
+	{0,1,0,1,0,0,1,0,0,0,1,0,0,1,0,0,0,1,0,0},
+	{0,1,0,1,0,0,0,1,0,0,1,0,0,1,0,0,1,1,0,0},
+	{0,0,1,0,0,0,0,0,1,1,0,0,0,1,0,0,1,1,0,0},
+	{0,1,0,1,0,0,0,0,1,0,0,0,0,1,0,1,0,1,0,0},
+	{0,1,0,1,0,0,0,1,0,0,0,0,0,1,1,0,0,1,0,0},
+	{1,0,0,0,1,0,1,0,0,0,0,0,0,1,0,0,0,1,0,0}		
 };
+int ang = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -106,6 +111,7 @@ void keyscan_(){
 		}
 }
 void refresh_matrix_led(){
+	__HC138_G1_OFF();  //turn off the matrix display
 	HC138_Set_Row(row_cnt);
 	for (int i = 0; i<20; i ++){
 		if (videoram_matrix[row_cnt][i])
@@ -116,9 +122,18 @@ void refresh_matrix_led(){
 		}
 		
 	}
+	__HC138_G1_ON();// turn on the matix display
+
 	row_cnt++;
 	if (row_cnt==7) {row_cnt = 0;}
 
+}
+void clock_ssd1351(void){
+	  SSD1351_DrawLineVR(64,64,ang,60,SSD1351_WHITE);
+	  SSD1351_RefreshVR();
+		SSD1351_DrawLineVR(64,64,ang,60,SSD1351_BLACK);
+  	ang +=6;
+	  if (ang==360) {ang = 0;}
 }
 /* USER CODE END 0 */
 
@@ -158,17 +173,22 @@ int main(void)
   /* USER CODE BEGIN 2 */
 //	SG_Task_add(ld3,200);
 //	SG_Task_add(ld2,121);
-	__HC138_G1_ON();
-	HC138_Set_Col(12);
+	SSD1351_Init();
+//	SSD1351_FillScreen(SSD1351_BLACK);
+  SSD1351_DrawLine(60,60,190,20,SSD1351_WHITE);
+  SSD1351_DrawLine(60,60,220,20,SSD1351_YELLOW);
+  SSD1351_DrawLine(60,60,260,20,SSD1351_GREEN);
+  SSD1351_DrawLine(60,60,290,20,SSD1351_RED);
 	SG_Task_add(refresh_matrix_led,2);
 	SG_Task_add(keyscan_,1);
+	SG_Task_add(clock_ssd1351,100);
 	SG_Button_add(SW3_BTN_GPIO_Port, SW3_BTN_Pin); //1
 	SG_Button_add(SW4_BTN_GPIO_Port, SW4_BTN_Pin); //2
 	SG_Button_add(SW5_BTN_GPIO_Port, SW5_BTN_Pin); //3
 	SG_Button_add(ENC_BTN_GPIO_Port, ENC_BTN_Pin); //4
-	
-	
 	updateTimerTask();
+	
+	
   /* USER CODE END 2 */
 
   /* Infinite loop */

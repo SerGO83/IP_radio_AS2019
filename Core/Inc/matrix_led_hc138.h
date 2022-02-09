@@ -1,4 +1,5 @@
 #define __HC138_G1_ON() 	HAL_GPIO_WritePin(HC138_G1_GPIO_Port, HC138_G1_Pin, GPIO_PIN_SET)
+#define __HC138_G1_OFF() 	HAL_GPIO_WritePin(HC138_G1_GPIO_Port, HC138_G1_Pin, GPIO_PIN_RESET)
 
 
 void HC138_Res_All_Cols(void);
