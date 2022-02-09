@@ -54,6 +54,9 @@ I2C_HandleTypeDef hi2c4;
 SPI_HandleTypeDef hspi2;
 
 TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim6;
+TIM_HandleTypeDef htim8;
+TIM_HandleTypeDef htim9;
 
 UART_HandleTypeDef huart3;
 
@@ -63,15 +66,17 @@ int col_cnt  = 0;
 int cnt_sec = 0;
 int cnt_msec = 0;
 int videoram_matrix[7][20]={
-	{1,0,0,0,1,0,1,0,0,0,1,0,0,1,0,1,0,1,0,0},
-	{0,1,0,1,0,0,1,0,0,0,1,0,0,1,0,0,0,1,0,0},
-	{0,1,0,1,0,0,0,1,0,0,1,0,0,1,0,0,1,1,0,0},
-	{0,0,1,0,0,0,0,0,1,1,0,0,0,1,0,0,1,1,0,0},
-	{0,1,0,1,0,0,0,0,1,0,0,0,0,1,0,1,0,1,0,0},
-	{0,1,0,1,0,0,0,1,0,0,0,0,0,1,1,0,0,1,0,0},
-	{1,0,0,0,1,0,1,0,0,0,0,0,0,1,0,0,0,1,0,0}		
+	{1,0,0,1,1,0,0,0,0,1,1,1,0,0,0,1,1,1,1,0},
+	{1,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,0,1,0},
+	{1,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,0,1,0},
+	{1,1,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,0,1,0},
+	{1,1,1,0,0,1,0,0,1,0,0,1,0,0,0,1,1,1,1,0},
+	{1,0,1,0,0,1,0,0,1,0,0,1,0,0,0,1,0,0,1,0},
+	{1,0,0,1,1,0,0,1,0,0,0,1,0,0,1,0,0,0,1,0}		
 };
 int ang = 0;
+int conrast_matrix_led = 0;
+int dir_contrast;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -82,6 +87,9 @@ static void MX_SPI2_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_I2C4_Init(void);
 static void MX_TIM1_Init(void);
+static void MX_TIM6_Init(void);
+static void MX_TIM8_Init(void);
+static void MX_TIM9_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -111,7 +119,7 @@ void keyscan_(){
 		}
 }
 void refresh_matrix_led(){
-	__HC138_G1_OFF();  //turn off the matrix display
+	htim9.Instance->CCR1 = 1; //turn off the matrix display. set minimum brightness
 	HC138_Set_Row(row_cnt);
 	for (int i = 0; i<20; i ++){
 		if (videoram_matrix[row_cnt][i])
@@ -120,13 +128,12 @@ void refresh_matrix_led(){
 		} else {
 			HC138_ReSet_Col(i);
 		}
-		
 	}
-	__HC138_G1_ON();// turn on the matix display
+//	HAL_TIM_PWM_Start(&htim9,TIM_CHANNEL_1);
+	htim9.Instance->CCR1 = gamma8[conrast_matrix_led]; // turn on the matix display. set the brightness
 
 	row_cnt++;
 	if (row_cnt==7) {row_cnt = 0;}
-
 }
 void clock_ssd1351(void){
 	  SSD1351_DrawLineVR(64,64,ang,60,SSD1351_WHITE);
@@ -134,6 +141,18 @@ void clock_ssd1351(void){
 		SSD1351_DrawLineVR(64,64,ang,60,SSD1351_BLACK);
   	ang +=6;
 	  if (ang==360) {ang = 0;}
+}
+void chage_contrast_matrix_led(void){
+	if (dir_contrast) {
+			conrast_matrix_led--;
+			if (conrast_matrix_led==48) {
+		dir_contrast = 0;}
+	} else {
+			conrast_matrix_led++;
+			if (conrast_matrix_led==240) {
+		dir_contrast = 1;}
+
+	}
 }
 /* USER CODE END 0 */
 
@@ -170,25 +189,29 @@ int main(void)
   MX_ADC1_Init();
   MX_I2C4_Init();
   MX_TIM1_Init();
+  MX_TIM6_Init();
+  MX_TIM8_Init();
+  MX_TIM9_Init();
   /* USER CODE BEGIN 2 */
 //	SG_Task_add(ld3,200);
 //	SG_Task_add(ld2,121);
 	SSD1351_Init();
-//	SSD1351_FillScreen(SSD1351_BLACK);
+//	SSD1351_FillScreenVR(SSD1351_YELLOW);
   SSD1351_DrawLine(60,60,190,20,SSD1351_WHITE);
   SSD1351_DrawLine(60,60,220,20,SSD1351_YELLOW);
   SSD1351_DrawLine(60,60,260,20,SSD1351_GREEN);
   SSD1351_DrawLine(60,60,290,20,SSD1351_RED);
-	SG_Task_add(refresh_matrix_led,2);
 	SG_Task_add(keyscan_,1);
 	SG_Task_add(clock_ssd1351,100);
+	SG_Task_add(chage_contrast_matrix_led,4);
 	SG_Button_add(SW3_BTN_GPIO_Port, SW3_BTN_Pin); //1
 	SG_Button_add(SW4_BTN_GPIO_Port, SW4_BTN_Pin); //2
 	SG_Button_add(SW5_BTN_GPIO_Port, SW5_BTN_Pin); //3
 	SG_Button_add(ENC_BTN_GPIO_Port, ENC_BTN_Pin); //4
 	updateTimerTask();
 	
-	
+	HAL_TIM_Base_Start_IT(&htim6); //start the timer for the dymanic indication
+	HAL_TIM_PWM_Start(&htim9,TIM_CHANNEL_1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -453,6 +476,143 @@ static void MX_TIM1_Init(void)
 }
 
 /**
+  * @brief TIM6 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM6_Init(void)
+{
+
+  /* USER CODE BEGIN TIM6_Init 0 */
+
+  /* USER CODE END TIM6_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM6_Init 1 */
+
+  /* USER CODE END TIM6_Init 1 */
+  htim6.Instance = TIM6;
+  htim6.Init.Prescaler = 4799;
+  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim6.Init.Period = 30;
+  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM6_Init 2 */
+
+  /* USER CODE END TIM6_Init 2 */
+
+}
+
+/**
+  * @brief TIM8 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM8_Init(void)
+{
+
+  /* USER CODE BEGIN TIM8_Init 0 */
+
+  /* USER CODE END TIM8_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM8_Init 1 */
+
+  /* USER CODE END TIM8_Init 1 */
+  htim8.Instance = TIM8;
+  htim8.Init.Prescaler = 0;
+  htim8.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim8.Init.Period = 65535;
+  htim8.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim8.Init.RepetitionCounter = 0;
+  htim8.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim8, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim8, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM8_Init 2 */
+
+  /* USER CODE END TIM8_Init 2 */
+
+}
+
+/**
+  * @brief TIM9 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM9_Init(void)
+{
+
+  /* USER CODE BEGIN TIM9_Init 0 */
+
+  /* USER CODE END TIM9_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM9_Init 1 */
+
+  /* USER CODE END TIM9_Init 1 */
+  htim9.Instance = TIM9;
+  htim9.Init.Prescaler = 9;
+  htim9.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim9.Init.Period = 256;
+  htim9.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim9.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim9) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim9, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim9) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 15;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim9, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM9_Init 2 */
+
+  /* USER CODE END TIM9_Init 2 */
+  HAL_TIM_MspPostInit(&htim9);
+
+}
+
+/**
   * @brief USART3 Initialization Function
   * @param None
   * @retval None
@@ -507,9 +667,8 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, COL_13_Pin|COL_09_Pin|HC138_C_Pin|HC138_G1_Pin
-                          |COL_11_Pin|COL_15_Pin|COL_16_Pin|COL_17_Pin
-                          |COL_20_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, COL_13_Pin|COL_09_Pin|HC138_C_Pin|COL_11_Pin
+                          |COL_15_Pin|COL_16_Pin|COL_17_Pin|COL_20_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOF, COL_08_Pin|COL_10_Pin|COL_12_Pin|HC138_A_Pin
@@ -528,12 +687,10 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, COL_14_Pin|COL_05_Pin|COL_03_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : COL_13_Pin COL_09_Pin HC138_C_Pin HC138_G1_Pin
-                           COL_11_Pin COL_15_Pin COL_16_Pin COL_17_Pin
-                           COL_20_Pin */
-  GPIO_InitStruct.Pin = COL_13_Pin|COL_09_Pin|HC138_C_Pin|HC138_G1_Pin
-                          |COL_11_Pin|COL_15_Pin|COL_16_Pin|COL_17_Pin
-                          |COL_20_Pin;
+  /*Configure GPIO pins : COL_13_Pin COL_09_Pin HC138_C_Pin COL_11_Pin
+                           COL_15_Pin COL_16_Pin COL_17_Pin COL_20_Pin */
+  GPIO_InitStruct.Pin = COL_13_Pin|COL_09_Pin|HC138_C_Pin|COL_11_Pin
+                          |COL_15_Pin|COL_16_Pin|COL_17_Pin|COL_20_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -665,7 +822,10 @@ static void MX_GPIO_Init(void)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   /* USER CODE BEGIN Callback 0 */
-
+	if (htim->Instance == TIM6){
+			HAL_GPIO_TogglePin(LD3_GPIO_Port,LD3_Pin);
+			refresh_matrix_led();
+	}
   /* USER CODE END Callback 0 */
   if (htim->Instance == TIM14) {
     HAL_IncTick();
