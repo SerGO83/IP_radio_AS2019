@@ -58,12 +58,34 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define OLED_DC_Pin GPIO_PIN_3
-#define OLED_DC_GPIO_Port GPIOE
-#define OLED_RES_Pin GPIO_PIN_6
-#define OLED_RES_GPIO_Port GPIOE
+#define COL_13_Pin GPIO_PIN_2
+#define COL_13_GPIO_Port GPIOE
+#define COL_09_Pin GPIO_PIN_3
+#define COL_09_GPIO_Port GPIOE
+#define HC138_C_Pin GPIO_PIN_4
+#define HC138_C_GPIO_Port GPIOE
+#define HC138_G1_Pin GPIO_PIN_5
+#define HC138_G1_GPIO_Port GPIOE
+#define COL_11_Pin GPIO_PIN_6
+#define COL_11_GPIO_Port GPIOE
 #define USER_Btn_Pin GPIO_PIN_13
 #define USER_Btn_GPIO_Port GPIOC
+#define COL_08_Pin GPIO_PIN_0
+#define COL_08_GPIO_Port GPIOF
+#define COL_10_Pin GPIO_PIN_1
+#define COL_10_GPIO_Port GPIOF
+#define COL_12_Pin GPIO_PIN_2
+#define COL_12_GPIO_Port GPIOF
+#define HC138_A_Pin GPIO_PIN_3
+#define HC138_A_GPIO_Port GPIOF
+#define HC138_B_Pin GPIO_PIN_5
+#define HC138_B_GPIO_Port GPIOF
+#define COL_06_Pin GPIO_PIN_7
+#define COL_06_GPIO_Port GPIOF
+#define COL_07_Pin GPIO_PIN_8
+#define COL_07_GPIO_Port GPIOF
+#define COL_04_Pin GPIO_PIN_9
+#define COL_04_GPIO_Port GPIOF
 #define SSD1351_DC_Pin GPIO_PIN_10
 #define SSD1351_DC_GPIO_Port GPIOF
 #define MCO_Pin GPIO_PIN_0
@@ -72,6 +94,8 @@ void Error_Handler(void);
 #define RMII_MDC_GPIO_Port GPIOC
 #define LGHT_SNS_POT_Pin GPIO_PIN_2
 #define LGHT_SNS_POT_GPIO_Port GPIOC
+#define COL_18_Pin GPIO_PIN_0
+#define COL_18_GPIO_Port GPIOA
 #define RMII_REF_CLK_Pin GPIO_PIN_1
 #define RMII_REF_CLK_GPIO_Port GPIOA
 #define RMII_MDIO_Pin GPIO_PIN_2
@@ -82,16 +106,24 @@ void Error_Handler(void);
 #define RMII_RXD0_GPIO_Port GPIOC
 #define RMII_RXD1_Pin GPIO_PIN_5
 #define RMII_RXD1_GPIO_Port GPIOC
-#define SSD1351_RES_Pin GPIO_PIN_0
-#define SSD1351_RES_GPIO_Port GPIOB
+#define COL_19_Pin GPIO_PIN_0
+#define COL_19_GPIO_Port GPIOB
 #define LIN_POT_Pin GPIO_PIN_1
 #define LIN_POT_GPIO_Port GPIOB
-#define OLED_CS_Pin GPIO_PIN_1
-#define OLED_CS_GPIO_Port GPIOG
+#define COL_02_Pin GPIO_PIN_0
+#define COL_02_GPIO_Port GPIOG
+#define COL_01_Pin GPIO_PIN_1
+#define COL_01_GPIO_Port GPIOG
 #define SW3_BTN_Pin GPIO_PIN_7
 #define SW3_BTN_GPIO_Port GPIOE
 #define SW4_BTN_Pin GPIO_PIN_8
 #define SW4_BTN_GPIO_Port GPIOE
+#define COL_15_Pin GPIO_PIN_10
+#define COL_15_GPIO_Port GPIOE
+#define COL_16_Pin GPIO_PIN_12
+#define COL_16_GPIO_Port GPIOE
+#define COL_17_Pin GPIO_PIN_14
+#define COL_17_GPIO_Port GPIOE
 #define ENC_BTN_Pin GPIO_PIN_15
 #define ENC_BTN_GPIO_Port GPIOE
 #define SW5_BTN_Pin GPIO_PIN_11
@@ -104,6 +136,8 @@ void Error_Handler(void);
 #define STLK_RX_GPIO_Port GPIOD
 #define STLK_TX_Pin GPIO_PIN_9
 #define STLK_TX_GPIO_Port GPIOD
+#define COL_14_Pin GPIO_PIN_11
+#define COL_14_GPIO_Port GPIOD
 #define USB_PowerSwitchOn_Pin GPIO_PIN_6
 #define USB_PowerSwitchOn_GPIO_Port GPIOG
 #define USB_OverCurrent_Pin GPIO_PIN_7
@@ -122,6 +156,10 @@ void Error_Handler(void);
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14
 #define TCK_GPIO_Port GPIOA
+#define COL_05_Pin GPIO_PIN_0
+#define COL_05_GPIO_Port GPIOD
+#define COL_03_Pin GPIO_PIN_1
+#define COL_03_GPIO_Port GPIOD
 #define RMII_TX_EN_Pin GPIO_PIN_11
 #define RMII_TX_EN_GPIO_Port GPIOG
 #define RMII_TXD0_Pin GPIO_PIN_13
@@ -132,6 +170,8 @@ void Error_Handler(void);
 #define SSD1351_CS_GPIO_Port GPIOB
 #define LD2_Pin GPIO_PIN_7
 #define LD2_GPIO_Port GPIOB
+#define COL_20_Pin GPIO_PIN_0
+#define COL_20_GPIO_Port GPIOE
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */

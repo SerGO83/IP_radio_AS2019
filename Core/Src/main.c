@@ -22,6 +22,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "task.h"
+#include "button.h"
+#include "matrix_led_hc138.h"
 
 /* USER CODE END Includes */
 
@@ -45,21 +48,31 @@ ADC_HandleTypeDef hadc1;
 I2C_HandleTypeDef hi2c4;
 
 SPI_HandleTypeDef hspi2;
-SPI_HandleTypeDef hspi5;
 
 TIM_HandleTypeDef htim1;
 
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
-
+int row_cnt = 0;
+int col_cnt  = 0;
+int cnt_sec = 0;
+int cnt_msec = 0;
+int videoram_matrix[7][20]={
+	{1,0,0,0,1,0,1,0,0,0,1,0,0,1,0,1,0,0,1,0},
+	{0,1,0,1,0,0,1,0,0,0,1,0,0,1,0,0,0,0,1,0},
+	{0,1,0,1,0,0,0,1,0,0,1,0,0,1,0,0,0,1,1,0},
+	{0,0,1,0,0,0,0,0,1,1,0,0,0,1,0,0,1,0,1,0},
+	{0,1,0,1,0,0,0,0,1,0,0,0,0,1,0,1,0,0,1,0},
+	{0,1,0,1,0,0,0,1,0,0,0,0,0,1,1,0,0,0,1,0},
+	{1,0,0,0,1,0,1,0,0,0,0,0,0,1,0,0,0,0,1,0}		
+};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART3_UART_Init(void);
-static void MX_SPI5_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_I2C4_Init(void);
@@ -70,7 +83,43 @@ static void MX_TIM1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void ld3(){
+	HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+}
+void ld2(){
+	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+}
+void keyscan_(){
+		switch (keyscan()) {
+			case 1:
+				HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+				break;
+			case 2:
+				HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+				break;
+			case 3:
+				HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+				HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+				break;
+			default:
+				break;
+		}
+}
+void refresh_matrix_led(){
+	HC138_Set_Row(row_cnt);
+	for (int i = 0; i<20; i ++){
+		if (videoram_matrix[row_cnt][i])
+		{
+			HC138_Set_Col(i);
+		} else {
+			HC138_ReSet_Col(i);
+		}
+		
+	}
+	row_cnt++;
+	if (row_cnt==7) {row_cnt = 0;}
 
+}
 /* USER CODE END 0 */
 
 /**
@@ -102,26 +151,33 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART3_UART_Init();
-  MX_SPI5_Init();
   MX_SPI2_Init();
   MX_ADC1_Init();
   MX_I2C4_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-
+//	SG_Task_add(ld3,200);
+//	SG_Task_add(ld2,121);
+	__HC138_G1_ON();
+	HC138_Set_Col(12);
+	SG_Task_add(refresh_matrix_led,2);
+	SG_Task_add(keyscan_,1);
+	SG_Button_add(SW3_BTN_GPIO_Port, SW3_BTN_Pin); //1
+	SG_Button_add(SW4_BTN_GPIO_Port, SW4_BTN_Pin); //2
+	SG_Button_add(SW5_BTN_GPIO_Port, SW5_BTN_Pin); //3
+	SG_Button_add(ENC_BTN_GPIO_Port, ENC_BTN_Pin); //4
+	
+	
+	updateTimerTask();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-		HAL_Delay(100);
-		HAL_GPIO_TogglePin(LD3_GPIO_Port,LD3_Pin);
-		if (!HAL_GPIO_ReadPin(SW5_BTN_GPIO_Port,SW5_BTN_Pin)){
-			HAL_GPIO_TogglePin(LD2_GPIO_Port,LD2_Pin);
-		} else {
-			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, 0);
-		}
+		checkTask();
+		runTask();
+		
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -326,46 +382,6 @@ static void MX_SPI2_Init(void)
 }
 
 /**
-  * @brief SPI5 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_SPI5_Init(void)
-{
-
-  /* USER CODE BEGIN SPI5_Init 0 */
-
-  /* USER CODE END SPI5_Init 0 */
-
-  /* USER CODE BEGIN SPI5_Init 1 */
-
-  /* USER CODE END SPI5_Init 1 */
-  /* SPI5 parameter configuration*/
-  hspi5.Instance = SPI5;
-  hspi5.Init.Mode = SPI_MODE_MASTER;
-  hspi5.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi5.Init.DataSize = SPI_DATASIZE_8BIT;
-  hspi5.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi5.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi5.Init.NSS = SPI_NSS_SOFT;
-  hspi5.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
-  hspi5.Init.FirstBit = SPI_FIRSTBIT_MSB;
-  hspi5.Init.TIMode = SPI_TIMODE_DISABLE;
-  hspi5.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-  hspi5.Init.CRCPolynomial = 7;
-  hspi5.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
-  hspi5.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
-  if (HAL_SPI_Init(&hspi5) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN SPI5_Init 2 */
-
-  /* USER CODE END SPI5_Init 2 */
-
-}
-
-/**
   * @brief TIM1 Initialization Function
   * @param None
   * @retval None
@@ -471,19 +487,33 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, OLED_DC_Pin|OLED_RES_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, COL_13_Pin|COL_09_Pin|HC138_C_Pin|HC138_G1_Pin
+                          |COL_11_Pin|COL_15_Pin|COL_16_Pin|COL_17_Pin
+                          |COL_20_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(SSD1351_DC_GPIO_Port, SSD1351_DC_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOF, COL_08_Pin|COL_10_Pin|COL_12_Pin|HC138_A_Pin
+                          |HC138_B_Pin|COL_06_Pin|COL_07_Pin|COL_04_Pin
+                          |SSD1351_DC_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, SSD1351_RES_Pin|LD3_Pin|SSD1351_CS_Pin|LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(COL_18_GPIO_Port, COL_18_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOG, OLED_CS_Pin|USB_PowerSwitchOn_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, COL_19_Pin|LD3_Pin|SSD1351_CS_Pin|LD2_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : OLED_DC_Pin OLED_RES_Pin */
-  GPIO_InitStruct.Pin = OLED_DC_Pin|OLED_RES_Pin;
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOG, COL_02_Pin|COL_01_Pin|USB_PowerSwitchOn_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOD, COL_14_Pin|COL_05_Pin|COL_03_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : COL_13_Pin COL_09_Pin HC138_C_Pin HC138_G1_Pin
+                           COL_11_Pin COL_15_Pin COL_16_Pin COL_17_Pin
+                           COL_20_Pin */
+  GPIO_InitStruct.Pin = COL_13_Pin|COL_09_Pin|HC138_C_Pin|HC138_G1_Pin
+                          |COL_11_Pin|COL_15_Pin|COL_16_Pin|COL_17_Pin
+                          |COL_20_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -495,12 +525,16 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(USER_Btn_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : SSD1351_DC_Pin */
-  GPIO_InitStruct.Pin = SSD1351_DC_Pin;
+  /*Configure GPIO pins : COL_08_Pin COL_10_Pin COL_12_Pin HC138_A_Pin
+                           HC138_B_Pin COL_06_Pin COL_07_Pin COL_04_Pin
+                           SSD1351_DC_Pin */
+  GPIO_InitStruct.Pin = COL_08_Pin|COL_10_Pin|COL_12_Pin|HC138_A_Pin
+                          |HC138_B_Pin|COL_06_Pin|COL_07_Pin|COL_04_Pin
+                          |SSD1351_DC_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(SSD1351_DC_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
 
   /*Configure GPIO pins : RMII_MDC_Pin RMII_RXD0_Pin RMII_RXD1_Pin */
   GPIO_InitStruct.Pin = RMII_MDC_Pin|RMII_RXD0_Pin|RMII_RXD1_Pin;
@@ -510,6 +544,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : COL_18_Pin */
+  GPIO_InitStruct.Pin = COL_18_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(COL_18_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pins : RMII_REF_CLK_Pin RMII_MDIO_Pin RMII_CRS_DV_Pin */
   GPIO_InitStruct.Pin = RMII_REF_CLK_Pin|RMII_MDIO_Pin|RMII_CRS_DV_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -518,15 +559,15 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : SSD1351_RES_Pin LD3_Pin SSD1351_CS_Pin LD2_Pin */
-  GPIO_InitStruct.Pin = SSD1351_RES_Pin|LD3_Pin|SSD1351_CS_Pin|LD2_Pin;
+  /*Configure GPIO pins : COL_19_Pin LD3_Pin SSD1351_CS_Pin LD2_Pin */
+  GPIO_InitStruct.Pin = COL_19_Pin|LD3_Pin|SSD1351_CS_Pin|LD2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : OLED_CS_Pin USB_PowerSwitchOn_Pin */
-  GPIO_InitStruct.Pin = OLED_CS_Pin|USB_PowerSwitchOn_Pin;
+  /*Configure GPIO pins : COL_02_Pin COL_01_Pin USB_PowerSwitchOn_Pin */
+  GPIO_InitStruct.Pin = COL_02_Pin|COL_01_Pin|USB_PowerSwitchOn_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -551,6 +592,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
   HAL_GPIO_Init(RMII_TXD1_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : COL_14_Pin COL_05_Pin COL_03_Pin */
+  GPIO_InitStruct.Pin = COL_14_Pin|COL_05_Pin|COL_03_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /*Configure GPIO pin : USB_OverCurrent_Pin */
   GPIO_InitStruct.Pin = USB_OverCurrent_Pin;
@@ -615,7 +663,11 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-
+	while (1) {
+		HAL_Delay(100);
+		HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+	}
   /* USER CODE END Error_Handler_Debug */
 }
 
