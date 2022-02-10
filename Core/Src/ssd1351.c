@@ -186,6 +186,29 @@ static void SSD1351_WriteChar(uint16_t x, uint16_t y, char ch, FontDef font, uin
         }
     }
 }
+static void SSD1351_WriteCharVR(uint16_t x, uint16_t y, char ch, FontDef font, uint16_t color, uint16_t bgcolor) {
+    uint32_t i, b, j;
+		int temp = color;
+//    SSD1351_SetAddressWindow(x, y, x+font.width-1, y+font.height-1);
+
+    for(i = 0; i < font.height; i++) {
+        b = font.data[(ch - 32) * font.height + i];
+        for(j = 0; j < font.width; j++) {
+            if((b << j) & 0x8000)  {
+//                uint8_t data[] = { color >> 8, color & 0xFF };
+//                SSD1351_WriteData(data, sizeof(data));
+								color = temp;
+								videoram[y+i][x+j] = COLORSWAP;
+
+            } else {
+//                uint8_t data[] = { bgcolor >> 8, bgcolor & 0xFF };
+//                SSD1351_WriteData(data, sizeof(data));
+								color = bgcolor;
+								videoram[y+i][x+j] = COLORSWAP;
+            }
+        }
+    }
+}
 
 void SSD1351_WriteString(uint16_t x, uint16_t y, const char* str, FontDef font, uint16_t color, uint16_t bgcolor) {
     SSD1351_Select();
@@ -211,6 +234,31 @@ void SSD1351_WriteString(uint16_t x, uint16_t y, const char* str, FontDef font, 
     }
 
     SSD1351_Unselect();
+}
+void SSD1351_WriteStringVR(uint16_t x, uint16_t y, const char* str, FontDef font, uint16_t color, uint16_t bgcolor) {
+//    SSD1351_Select();
+
+    while(*str) {
+        if(x + font.width >= SSD1351_WIDTH) {
+            x = 0;
+            y += font.height;
+            if(y + font.height >= SSD1351_HEIGHT) {
+                break;
+            }
+
+            if(*str == ' ') {
+                // skip spaces in the beginning of the new line
+                str++;
+                continue;
+            }
+        }
+
+        SSD1351_WriteCharVR(x, y, *str, font, color, bgcolor);
+        x += font.width;
+        str++;
+    }
+
+//    SSD1351_Unselect();
 }
 
 void SSD1351_FillRectangle(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color) {

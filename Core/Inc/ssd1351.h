@@ -55,6 +55,7 @@ void SSD1351_InvertColors(bool invert);
 void SSD1351_WriteCommand(uint8_t cmd);
 void SSD1351_DrawLine(uint8_t X,uint8_t Y,uint16_t ang,uint16_t len,uint16_t color);
 
+void SSD1351_WriteStringVR(uint16_t x, uint16_t y, const char* str, FontDef font, uint16_t color, uint16_t bgcolor);
 void SSD1351_FillScreenVR(uint16_t color);
 void SSD1351_DrawLineVR(uint8_t X,uint8_t Y,uint16_t ang,uint16_t len,uint16_t color);
 void SSD1351_RefreshVR(void);

@@ -48,6 +48,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
+DMA_HandleTypeDef hdma_adc1;
 
 I2C_HandleTypeDef hi2c4;
 
@@ -55,7 +56,6 @@ SPI_HandleTypeDef hspi2;
 
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim6;
-TIM_HandleTypeDef htim8;
 TIM_HandleTypeDef htim9;
 
 UART_HandleTypeDef huart3;
@@ -77,18 +77,21 @@ int videoram_matrix[7][20]={
 int ang = 0;
 int conrast_matrix_led = 0;
 int dir_contrast;
+char oled_string[10];
+int adc1, adc2;
+uint16_t adc[2] = {0,0};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_I2C4_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM6_Init(void);
-static void MX_TIM8_Init(void);
 static void MX_TIM9_Init(void);
 /* USER CODE BEGIN PFP */
 
@@ -136,7 +139,11 @@ void refresh_matrix_led(){
 	if (row_cnt==7) {row_cnt = 0;}
 }
 void clock_ssd1351(void){
-	  SSD1351_DrawLineVR(64,64,ang,60,SSD1351_WHITE);
+	  sprintf(oled_string, "%3d",ang);
+		SSD1351_WriteStringVR (30,90,oled_string,Font_11x18,SSD1351_BLUE,SSD1351_BLACK);
+	  sprintf(oled_string, "%2d %2d",adc[0]*51/4096,50-adc[1]*51/4096);
+		SSD1351_WriteStringVR (35,30,oled_string,Font_11x18,SSD1351_YELLOW,SSD1351_BLACK);
+	  SSD1351_DrawLineVR(64,64,ang,64,SSD1351_WHITE);
 	  SSD1351_RefreshVR();
 		SSD1351_DrawLineVR(64,64,ang,60,SSD1351_BLACK);
   	ang +=6;
@@ -153,6 +160,9 @@ void chage_contrast_matrix_led(void){
 		dir_contrast = 1;}
 
 	}
+}
+void measure_adc1(){
+		HAL_ADC_Start_DMA(&hadc1,(uint32_t*)&adc,2);
 }
 /* USER CODE END 0 */
 
@@ -184,13 +194,13 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART3_UART_Init();
   MX_SPI2_Init();
   MX_ADC1_Init();
   MX_I2C4_Init();
   MX_TIM1_Init();
   MX_TIM6_Init();
-  MX_TIM8_Init();
   MX_TIM9_Init();
   /* USER CODE BEGIN 2 */
 //	SG_Task_add(ld3,200);
@@ -204,6 +214,7 @@ int main(void)
 	SG_Task_add(keyscan_,1);
 	SG_Task_add(clock_ssd1351,100);
 	SG_Task_add(chage_contrast_matrix_led,4);
+	SG_Task_add(measure_adc1,10);
 	SG_Button_add(SW3_BTN_GPIO_Port, SW3_BTN_Pin); //1
 	SG_Button_add(SW4_BTN_GPIO_Port, SW4_BTN_Pin); //2
 	SG_Button_add(SW5_BTN_GPIO_Port, SW5_BTN_Pin); //3
@@ -211,7 +222,7 @@ int main(void)
 	updateTimerTask();
 	
 	HAL_TIM_Base_Start_IT(&htim6); //start the timer for the dymanic indication
-	HAL_TIM_PWM_Start(&htim9,TIM_CHANNEL_1);
+	HAL_TIM_PWM_Start(&htim9,TIM_CHANNEL_1);//start the timer for the changing brightness matrix display (PWM on pin G1 HC138)
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -310,13 +321,13 @@ static void MX_ADC1_Init(void)
   hadc1.Instance = ADC1;
   hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
+  hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.NbrOfConversion = 2;
   hadc1.Init.DMAContinuousRequests = DISABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
@@ -328,6 +339,14 @@ static void MX_ADC1_Init(void)
   sConfig.Channel = ADC_CHANNEL_12;
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_9;
+  sConfig.Rank = ADC_REGULAR_RANK_2;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -514,53 +533,6 @@ static void MX_TIM6_Init(void)
 }
 
 /**
-  * @brief TIM8 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM8_Init(void)
-{
-
-  /* USER CODE BEGIN TIM8_Init 0 */
-
-  /* USER CODE END TIM8_Init 0 */
-
-  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-
-  /* USER CODE BEGIN TIM8_Init 1 */
-
-  /* USER CODE END TIM8_Init 1 */
-  htim8.Instance = TIM8;
-  htim8.Init.Prescaler = 0;
-  htim8.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim8.Init.Period = 65535;
-  htim8.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim8.Init.RepetitionCounter = 0;
-  htim8.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim8) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim8, &sClockSourceConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim8, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM8_Init 2 */
-
-  /* USER CODE END TIM8_Init 2 */
-
-}
-
-/**
   * @brief TIM9 Initialization Function
   * @param None
   * @retval None
@@ -644,6 +616,22 @@ static void MX_USART3_UART_Init(void)
   /* USER CODE BEGIN USART3_Init 2 */
 
   /* USER CODE END USART3_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA2_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA2_Stream0_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
 
 }
 
@@ -808,7 +796,9 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc){
+	HAL_ADC_Stop_DMA(&hadc1);  //stop work ADC im DMA-mode
+}
 /* USER CODE END 4 */
 
 /**
