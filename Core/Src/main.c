@@ -33,6 +33,11 @@
 #include "tsl2561.h"
 //add 11-02-2022 for work with accel MPU-6050
 #include "mpu6050.h"
+//add 11-02-2022 for work with mp3 decoder VS1053
+#include "vs1053.h"
+#include "testMP3.h"
+#include "t.h"
+
 
 
 
@@ -58,6 +63,7 @@ DMA_HandleTypeDef hdma_adc1;
 
 I2C_HandleTypeDef hi2c4;
 
+SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
 
 TIM_HandleTypeDef htim1;
@@ -104,6 +110,7 @@ static void MX_I2C4_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM6_Init(void);
 static void MX_TIM9_Init(void);
+static void MX_SPI1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -241,12 +248,16 @@ int main(void)
   MX_TIM1_Init();
   MX_TIM6_Init();
   MX_TIM9_Init();
+  MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
 //	SG_Task_add(ld3,200);
 //	SG_Task_add(ld2,121);
 	SSD1351_Init();
 	tsl_init();
 	MPU6050_Init(&hi2c4);
+	vs1053_start();
+	HAL_Delay(100);
+	vs1053_WriteData(rawData,sizeof(rawData));
 //	SSD1351_FillScreenVR(SSD1351_YELLOW);
   SSD1351_DrawLine(60,60,190,20,SSD1351_WHITE);
   SSD1351_DrawLine(60,60,220,20,SSD1351_YELLOW);
@@ -443,6 +454,46 @@ static void MX_I2C4_Init(void)
   /* USER CODE BEGIN I2C4_Init 2 */
 
   /* USER CODE END I2C4_Init 2 */
+
+}
+
+/**
+  * @brief SPI1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI1_Init(void)
+{
+
+  /* USER CODE BEGIN SPI1_Init 0 */
+
+  /* USER CODE END SPI1_Init 0 */
+
+  /* USER CODE BEGIN SPI1_Init 1 */
+
+  /* USER CODE END SPI1_Init 1 */
+  /* SPI1 parameter configuration*/
+  hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_MASTER;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
+  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi1.Init.CRCPolynomial = 7;
+  hspi1.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
+  hspi1.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
+  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI1_Init 2 */
+
+  /* USER CODE END SPI1_Init 2 */
 
 }
 
@@ -707,16 +758,17 @@ static void MX_GPIO_Init(void)
                           |SSD1351_DC_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(COL_18_GPIO_Port, COL_18_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, COL_18_Pin|SPI3_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, COL_19_Pin|LD3_Pin|SSD1351_CS_Pin|LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, COL_19_Pin|LD3_Pin|SPI3_DCS_Pin|SSD1351_CS_Pin
+                          |LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOG, COL_02_Pin|COL_01_Pin|USB_PowerSwitchOn_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, COL_14_Pin|COL_05_Pin|COL_03_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOD, COL_14_Pin|SPI3_RESET_Pin|COL_05_Pin|COL_03_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : COL_13_Pin COL_09_Pin HC138_C_Pin COL_11_Pin
                            COL_15_Pin COL_16_Pin COL_17_Pin COL_20_Pin */
@@ -752,12 +804,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : COL_18_Pin */
-  GPIO_InitStruct.Pin = COL_18_Pin;
+  /*Configure GPIO pins : COL_18_Pin SPI3_CS_Pin */
+  GPIO_InitStruct.Pin = COL_18_Pin|SPI3_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(COL_18_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : RMII_REF_CLK_Pin RMII_MDIO_Pin RMII_CRS_DV_Pin */
   GPIO_InitStruct.Pin = RMII_REF_CLK_Pin|RMII_MDIO_Pin|RMII_CRS_DV_Pin;
@@ -767,8 +819,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : COL_19_Pin LD3_Pin SSD1351_CS_Pin LD2_Pin */
-  GPIO_InitStruct.Pin = COL_19_Pin|LD3_Pin|SSD1351_CS_Pin|LD2_Pin;
+  /*Configure GPIO pins : COL_19_Pin LD3_Pin SPI3_DCS_Pin SSD1351_CS_Pin
+                           LD2_Pin */
+  GPIO_InitStruct.Pin = COL_19_Pin|LD3_Pin|SPI3_DCS_Pin|SSD1351_CS_Pin
+                          |LD2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -787,11 +841,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : SW5_BTN_Pin */
-  GPIO_InitStruct.Pin = SW5_BTN_Pin;
+  /*Configure GPIO pins : SW5_BTN_Pin SPI3_DREQ_Pin */
+  GPIO_InitStruct.Pin = SW5_BTN_Pin|SPI3_DREQ_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(SW5_BTN_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pin : RMII_TXD1_Pin */
   GPIO_InitStruct.Pin = RMII_TXD1_Pin;
@@ -801,8 +855,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
   HAL_GPIO_Init(RMII_TXD1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : COL_14_Pin COL_05_Pin COL_03_Pin */
-  GPIO_InitStruct.Pin = COL_14_Pin|COL_05_Pin|COL_03_Pin;
+  /*Configure GPIO pins : COL_14_Pin SPI3_RESET_Pin COL_05_Pin COL_03_Pin */
+  GPIO_InitStruct.Pin = COL_14_Pin|SPI3_RESET_Pin|COL_05_Pin|COL_03_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
