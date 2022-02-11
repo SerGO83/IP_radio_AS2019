@@ -29,6 +29,9 @@
 #include "ssd1351.h"
 #include "fonts.h"
 #include "testimg.h"
+//add 10-02-2022 for work with tsl2561
+#include "tsl2561.h"
+
 
 /* USER CODE END Includes */
 
@@ -80,6 +83,11 @@ int dir_contrast;
 char oled_string[10];
 int adc1, adc2;
 uint16_t adc[2] = {0,0};
+unsigned int ms;  // Integration ("shutter") time in milliseconds
+unsigned int data0, data1;  //for tsl2561
+bool gain;        // Gain setting, 0 = X1, 1 = X16;
+double lux;    // Resulting lux value	
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -143,7 +151,9 @@ void clock_ssd1351(void){
 		SSD1351_WriteStringVR (30,90,oled_string,Font_11x18,SSD1351_BLUE,SSD1351_BLACK);
 	  sprintf(oled_string, "%2d %2d",adc[0]*51/4096,50-adc[1]*51/4096);
 		SSD1351_WriteStringVR (35,30,oled_string,Font_11x18,SSD1351_YELLOW,SSD1351_BLACK);
-	  SSD1351_DrawLineVR(64,64,ang,64,SSD1351_WHITE);
+		sprintf(oled_string, "%5d ",(int)lux);
+		SSD1351_WriteStringVR (25,50,oled_string,Font_11x18,SSD1351_YELLOW,SSD1351_BLACK);
+		SSD1351_DrawLineVR(64,64,ang,64,SSD1351_WHITE);
 	  SSD1351_RefreshVR();
 		SSD1351_DrawLineVR(64,64,ang,60,SSD1351_BLACK);
   	ang +=6;
@@ -163,6 +173,19 @@ void chage_contrast_matrix_led(void){
 }
 void measure_adc1(){
 		HAL_ADC_Start_DMA(&hadc1,(uint32_t*)&adc,2);
+}
+void tsl_read(){
+
+	if (TSL2561_getData(&data0, &data1))
+	{
+		TSL2561_getLux(gain, ms, data0, data1, &lux); 
+	}
+	
+}
+void tsl_init(){
+//	HAL_I2C_Master_Transmit(&hi2c4,0x39,
+	TSL2561_setTiming_ms(0, 2, &ms);
+	TSL2561_setPowerUp();
 }
 /* USER CODE END 0 */
 
@@ -206,15 +229,17 @@ int main(void)
 //	SG_Task_add(ld3,200);
 //	SG_Task_add(ld2,121);
 	SSD1351_Init();
+	tsl_init();
 //	SSD1351_FillScreenVR(SSD1351_YELLOW);
   SSD1351_DrawLine(60,60,190,20,SSD1351_WHITE);
   SSD1351_DrawLine(60,60,220,20,SSD1351_YELLOW);
   SSD1351_DrawLine(60,60,260,20,SSD1351_GREEN);
   SSD1351_DrawLine(60,60,290,20,SSD1351_RED);
 	SG_Task_add(keyscan_,1);
-	SG_Task_add(clock_ssd1351,100);
+	SG_Task_add(clock_ssd1351,60);
 	SG_Task_add(chage_contrast_matrix_led,4);
 	SG_Task_add(measure_adc1,10);
+	SG_Task_add(tsl_read,30);
 	SG_Button_add(SW3_BTN_GPIO_Port, SW3_BTN_Pin); //1
 	SG_Button_add(SW4_BTN_GPIO_Port, SW4_BTN_Pin); //2
 	SG_Button_add(SW5_BTN_GPIO_Port, SW5_BTN_Pin); //3
