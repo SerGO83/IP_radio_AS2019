@@ -31,6 +31,9 @@
 #include "testimg.h"
 //add 10-02-2022 for work with tsl2561
 #include "tsl2561.h"
+//add 11-02-2022 for work with accel MPU-6050
+#include "mpu6050.h"
+
 
 
 /* USER CODE END Includes */
@@ -87,7 +90,7 @@ unsigned int ms;  // Integration ("shutter") time in milliseconds
 unsigned int data0, data1;  //for tsl2561
 bool gain;        // Gain setting, 0 = X1, 1 = X16;
 double lux;    // Resulting lux value	
-
+MPU6050_t MPU6050;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -147,12 +150,22 @@ void refresh_matrix_led(){
 	if (row_cnt==7) {row_cnt = 0;}
 }
 void clock_ssd1351(void){
-	  sprintf(oled_string, "%3d",ang);
-		SSD1351_WriteStringVR (30,90,oled_string,Font_11x18,SSD1351_BLUE,SSD1351_BLACK);
-	  sprintf(oled_string, "%2d %2d",adc[0]*51/4096,50-adc[1]*51/4096);
-		SSD1351_WriteStringVR (35,30,oled_string,Font_11x18,SSD1351_YELLOW,SSD1351_BLACK);
-		sprintf(oled_string, "%5d ",(int)lux);
-		SSD1351_WriteStringVR (25,50,oled_string,Font_11x18,SSD1351_YELLOW,SSD1351_BLACK);
+//		SSD1351_DrawLineVR(64,64,ang,64,SSD1351_WHITE);
+	  sprintf(oled_string, "X%3d  Y%3d",(int16_t)MPU6050.KalmanAngleX*10/90,(int16_t)MPU6050.KalmanAngleY*10/90);
+		SSD1351_WriteStringVR (0,0,oled_string,Font_11x18,SSD1351_YELLOW,SSD1351_BLACK);
+//	  sprintf(oled_string, "Y %4d",(int16_t)MPU6050.KalmanAngleY*10/90);
+//		SSD1351_WriteStringVR (0,20,oled_string,Font_11x18,SSD1351_YELLOW,SSD1351_BLACK);
+		sprintf(oled_string, "%2d %2d",adc[0]*51/4096,50-adc[1]*51/4096);
+		SSD1351_WriteStringVR (0,20,oled_string,Font_11x18,SSD1351_YELLOW,SSD1351_BLACK);
+
+		sprintf(oled_string, "%5d",(int)lux);
+		SSD1351_WriteStringVR (0,40,oled_string,Font_11x18,SSD1351_YELLOW,SSD1351_BLACK);
+		SSD1351_WriteStringVR (55,47,"Lux",Font_7x10,SSD1351_YELLOW,SSD1351_BLACK);
+		sprintf(oled_string, "%4dx %4dy",(int)MPU6050.Gx, (int)MPU6050.Gy);
+		SSD1351_WriteStringVR (0,60,oled_string,Font_11x18,SSD1351_YELLOW,SSD1351_BLACK);
+	
+		sprintf(oled_string, "%3d",ang);
+		SSD1351_WriteStringVR (45,105,oled_string,Font_7x10,SSD1351_BLUE,SSD1351_BLACK);
 		SSD1351_DrawLineVR(64,64,ang,64,SSD1351_WHITE);
 	  SSD1351_RefreshVR();
 		SSD1351_DrawLineVR(64,64,ang,60,SSD1351_BLACK);
@@ -186,6 +199,9 @@ void tsl_init(){
 //	HAL_I2C_Master_Transmit(&hi2c4,0x39,
 	TSL2561_setTiming_ms(0, 2, &ms);
 	TSL2561_setPowerUp();
+}
+void mpu6050_read(){
+	MPU6050_Read_All(&hi2c4, &MPU6050);
 }
 /* USER CODE END 0 */
 
@@ -230,6 +246,7 @@ int main(void)
 //	SG_Task_add(ld2,121);
 	SSD1351_Init();
 	tsl_init();
+	MPU6050_Init(&hi2c4);
 //	SSD1351_FillScreenVR(SSD1351_YELLOW);
   SSD1351_DrawLine(60,60,190,20,SSD1351_WHITE);
   SSD1351_DrawLine(60,60,220,20,SSD1351_YELLOW);
@@ -238,6 +255,7 @@ int main(void)
 	SG_Task_add(keyscan_,1);
 	SG_Task_add(clock_ssd1351,60);
 	SG_Task_add(chage_contrast_matrix_led,4);
+	SG_Task_add(mpu6050_read,100);
 	SG_Task_add(measure_adc1,10);
 	SG_Task_add(tsl_read,30);
 	SG_Button_add(SW3_BTN_GPIO_Port, SW3_BTN_Pin); //1
