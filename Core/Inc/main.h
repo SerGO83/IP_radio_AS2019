@@ -70,6 +70,7 @@ void Error_Handler(void);
 #define COL_11_GPIO_Port GPIOE
 #define USER_Btn_Pin GPIO_PIN_13
 #define USER_Btn_GPIO_Port GPIOC
+#define USER_Btn_EXTI_IRQn EXTI15_10_IRQn
 #define COL_08_Pin GPIO_PIN_0
 #define COL_08_GPIO_Port GPIOF
 #define COL_10_Pin GPIO_PIN_1
@@ -132,6 +133,7 @@ void Error_Handler(void);
 #define SW5_BTN_GPIO_Port GPIOB
 #define SPI3_DREQ_Pin GPIO_PIN_12
 #define SPI3_DREQ_GPIO_Port GPIOB
+#define SPI3_DREQ_EXTI_IRQn EXTI15_10_IRQn
 #define RMII_TXD1_Pin GPIO_PIN_13
 #define RMII_TXD1_GPIO_Port GPIOB
 #define LD3_Pin GPIO_PIN_14

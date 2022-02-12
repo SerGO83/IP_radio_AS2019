@@ -7,6 +7,7 @@ extern SPI_HandleTypeDef hspi1;
 
 /* Private variables ---------------------------------------------------------*/
 #define	__WAIT_DREQ()		while(!HAL_GPIO_ReadPin(SPI3_DREQ_GPIO_Port,SPI3_DREQ_Pin))								// wait DREQ = 1
+#define __IS_DREQ()     HAL_GPIO_ReadPin(SPI3_DREQ_GPIO_Port,SPI3_DREQ_Pin)												//read DREQ
 #define	__XCS_CLR()			HAL_GPIO_WritePin(SPI3_CS_GPIO_Port,SPI3_CS_Pin,GPIO_PIN_RESET)						// XCS = 0
 #define	__XCS_SET()			HAL_GPIO_WritePin(SPI3_CS_GPIO_Port,SPI3_CS_Pin,GPIO_PIN_SET)							// XCS = 1
 #define __XRESET_CLR()	HAL_GPIO_WritePin(SPI3_RESET_GPIO_Port,SPI3_RESET_Pin,GPIO_PIN_RESET)					// XRESET = 0
@@ -17,6 +18,7 @@ extern SPI_HandleTypeDef hspi1;
 //#define __MIDI_ON()			HAL_GPIO_WritePin(MIDI_EN_GPIO_Port,MIDI_EN_Pin,GPIO_PIN_SET) 				// VS1053_MIDI_EN = 1
 
 uint16_t vs1053_buffer;
+extern uint32_t pnt_indx_mp3;
 
 //Transmite to command register in vs1053
 void vs1053_WriteRegister(uint8_t adress, uint16_t data)
@@ -51,6 +53,21 @@ uint16_t vs1053_ReadRegister(uint8_t adress)
 	__WAIT_DREQ();
 	
 	return dataRx;
+}
+
+void vs1053_PlayMp3  (uint8_t *data, uint32_t size) {
+	while ( __IS_DREQ()){
+			__XCS_SET();
+			__XDCS_CLR();
+			HAL_SPI_Transmit(&hspi1, &data[pnt_indx_mp3], 32, 100);
+			pnt_indx_mp3 +=32;
+			if (pnt_indx_mp3>size) 
+				{
+				HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
+				pnt_indx_mp3 = 0;
+				}
+				__XDCS_SET();
+	}
 }
 
 //Transmite to data register in vs1053 (in VS1002 native SPI modes)

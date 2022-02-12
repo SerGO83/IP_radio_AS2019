@@ -35,8 +35,9 @@
 #include "mpu6050.h"
 //add 11-02-2022 for work with mp3 decoder VS1053
 #include "vs1053.h"
-#include "testMP3.h"
-#include "t.h"
+//#include "testMP3.h"
+//#include "t.h"
+#include "udovolstvie_64.h"
 
 
 
@@ -97,6 +98,7 @@ unsigned int data0, data1;  //for tsl2561
 bool gain;        // Gain setting, 0 = X1, 1 = X16;
 double lux;    // Resulting lux value	
 MPU6050_t MPU6050;
+uint32_t pnt_indx_mp3;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -127,6 +129,9 @@ void keyscan_(){
 		switch (keyscan()) {
 			case 1:
 				HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+				HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+				vs1053_PlayMp3(rawData, sizeof(rawData));
+
 				break;
 			case 2:
 				HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
@@ -252,13 +257,15 @@ int main(void)
   /* USER CODE BEGIN 2 */
 //	SG_Task_add(ld3,200);
 //	SG_Task_add(ld2,121);
+	HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
 	SSD1351_Init();
 	tsl_init();
 	MPU6050_Init(&hi2c4);
 	vs1053_start();
 	HAL_Delay(100);
-	vs1053_WriteData(rawData,sizeof(rawData));
-//	SSD1351_FillScreenVR(SSD1351_YELLOW);
+	pnt_indx_mp3 = 0;
+	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+	vs1053_PlayMp3(rawData, sizeof(rawData));
   SSD1351_DrawLine(60,60,190,20,SSD1351_WHITE);
   SSD1351_DrawLine(60,60,220,20,SSD1351_YELLOW);
   SSD1351_DrawLine(60,60,260,20,SSD1351_GREEN);
@@ -267,7 +274,7 @@ int main(void)
 	SG_Task_add(clock_ssd1351,60);
 	SG_Task_add(chage_contrast_matrix_led,4);
 	SG_Task_add(mpu6050_read,100);
-	SG_Task_add(measure_adc1,10);
+  SG_Task_add(measure_adc1,10);
 	SG_Task_add(tsl_read,30);
 	SG_Button_add(SW3_BTN_GPIO_Port, SW3_BTN_Pin); //1
 	SG_Button_add(SW4_BTN_GPIO_Port, SW4_BTN_Pin); //2
@@ -841,11 +848,17 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : SW5_BTN_Pin SPI3_DREQ_Pin */
-  GPIO_InitStruct.Pin = SW5_BTN_Pin|SPI3_DREQ_Pin;
+  /*Configure GPIO pin : SW5_BTN_Pin */
+  GPIO_InitStruct.Pin = SW5_BTN_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  HAL_GPIO_Init(SW5_BTN_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : SPI3_DREQ_Pin */
+  GPIO_InitStruct.Pin = SPI3_DREQ_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(SPI3_DREQ_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : RMII_TXD1_Pin */
   GPIO_InitStruct.Pin = RMII_TXD1_Pin;
@@ -890,11 +903,23 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
   HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+
 }
 
 /* USER CODE BEGIN 4 */
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc){
 	HAL_ADC_Stop_DMA(&hadc1);  //stop work ADC im DMA-mode
+}
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+	if (GPIO_Pin == SPI3_DREQ_Pin){//proverim isto4nik prerivaniya. Esli eto on vivoda DREQ to zna4it nuzhno dat' next fragment mp3-file
+		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+//		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+		vs1053_PlayMp3(rawData, sizeof(rawData));
+		
+	}
 }
 /* USER CODE END 4 */
 

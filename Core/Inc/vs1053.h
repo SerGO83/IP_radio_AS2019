@@ -176,5 +176,7 @@ void vs1053_sound_loop (uint8_t how_loop);
 void vs1053_test_sci (void);
 void vs1053_sin_test (uint16_t how_loop);
 void vs1053_music_terminator_theme (void);
+
+void vs1053_PlayMp3  (uint8_t *data, uint32_t size);
 #endif /* __vs1053_H */
 
